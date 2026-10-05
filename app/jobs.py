@@ -128,14 +128,14 @@ async def transicion(r: Redis, job_id: str, desde: set[Estado], hacia: Estado, *
 
 async def listar(r: Redis, limite: int = 20) -> list[dict]:
     ids = await r.zrevrange(INDICE, 0, limite - 1)
-    jobs = []
-    for job_id in ids:
-        job = await obtener(r, job_id)
-        if job is None:  # expiró: se limpia del índice
-            await r.zrem(INDICE, job_id)
-        else:
-            jobs.append(job)
-    return jobs
+    async with r.pipeline(transaction=False) as p:  # un solo round-trip para todos los hashes
+        for job_id in ids:
+            p.hgetall(_clave(job_id))
+        hashes = await p.execute()
+    expirados = [job_id for job_id, datos in zip(ids, hashes) if not datos]
+    if expirados:  # se limpian del índice
+        await r.zrem(INDICE, *expirados)
+    return [_deserializar(datos) for datos in hashes if datos]
 
 
 async def colgados(r: Redis, mas_viejos_que_s: float) -> list[str]:

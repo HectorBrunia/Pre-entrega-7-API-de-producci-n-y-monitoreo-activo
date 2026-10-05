@@ -11,7 +11,12 @@ def crear_llm(temperature: float = 0.0):
     """LLM por defecto del proyecto (Gemini). El modelo se puede cambiar con GEMINI_MODEL."""
     from langchain_google_genai import ChatGoogleGenerativeAI
 
-    return ChatGoogleGenerativeAI(model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"), temperature=temperature)
+    extra = {}
+    if os.getenv("GEMINI_THINKING_LEVEL"):  # opcional: "minimal" / "low" bajan la latencia de Gemini 3+
+        extra["thinking_level"] = os.environ["GEMINI_THINKING_LEVEL"]
+    return ChatGoogleGenerativeAI(
+        model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"), temperature=temperature, **extra
+    )
 
 
 def texto_de(mensaje: BaseMessage | str) -> str:

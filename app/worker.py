@@ -45,7 +45,12 @@ class FalloSimulado(RuntimeError):
 # Ciclo de vida del worker
 # ---------------------------------------------------------------------------
 async def startup(ctx: dict) -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    # arq ya configura su logger; acá solo el de la app (basicConfig duplicaría las líneas de arq)
+    manejador = logging.StreamHandler()
+    manejador.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    for nombre in ("app", "orquestador"):
+        logging.getLogger(nombre).addHandler(manejador)
+        logging.getLogger(nombre).setLevel(logging.INFO)
     logging.getLogger("google_genai").setLevel(logging.ERROR)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     init_observabilidad("worker")

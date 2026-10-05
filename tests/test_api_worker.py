@@ -65,6 +65,17 @@ async def test_post_encola_y_devuelve_job_id(cliente, redis):
 
 
 @pytest.mark.asyncio
+async def test_listar_devuelve_los_ultimos_y_limpia_expirados(cliente, redis):
+    ids = [(await cliente.post("/tasks", json={"pregunta": PREGUNTA_VACACIONES})).json()["job_id"] for _ in range(3)]
+    await redis.delete(f"job:{ids[0]}")  # simula que el hash expiró por TTL
+
+    listado = (await cliente.get("/tasks")).json()
+
+    assert {j["job_id"] for j in listado} == set(ids[1:])
+    assert await redis.zscore(jobs.INDICE, ids[0]) is None
+
+
+@pytest.mark.asyncio
 async def test_job_inexistente_404(cliente):
     assert (await cliente.get("/tasks/nope")).status_code == 404
     assert (await cliente.post("/tasks/nope/approve", json={"aprobado": True})).status_code == 404

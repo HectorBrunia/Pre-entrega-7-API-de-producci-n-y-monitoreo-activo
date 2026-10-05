@@ -29,7 +29,18 @@ from orquestador.agents.analyst_agent import crear_nodo_analista
 from orquestador.agents.research_agent import crear_nodo_investigador
 from orquestador.agents.supervisor import crear_nodo_supervisor
 from orquestador.agents.synthesizer import crear_nodo_sintesis, nodo_escalar_humano
-from orquestador.state import MAX_PASOS, AgentState, DecisionSupervisor, DestinoRuteo, verificar_escritura
+from orquestador.state import (
+    MAX_PASOS,
+    AgentState,
+    AnalysisArtifact,
+    DecisionSupervisor,
+    DestinoRuteo,
+    EventoBitacora,
+    Hallazgo,
+    ResearchArtifact,
+    ValidationReport,
+    verificar_escritura,
+)
 from orquestador.validation import nodo_validador
 
 # Cada paso del supervisor dispara hasta 3 nodos (supervisor → especialista → validador),
@@ -100,6 +111,31 @@ def construir_grafo(investigador=None, analista=None, router=None, redactor=None
     return grafo.compile(checkpointer=checkpointer, name="orquestador_multiagente")
 
 
+# Modelos Pydantic que viajan en el estado. El serializador de Redis guarda cada objeto como un
+# "sobre" {"lc": 2, "id": [módulo, clase], "kwargs": ...} y, por seguridad, solo reconstruye las
+# clases de una allowlist explícita: sin esto, al leer un checkpoint (p. ej. al reanudar tras el
+# HITL) los modelos vuelven como dict y el grafo falla con "'dict' object has no attribute ...".
+MODELOS_DEL_ESTADO = (ResearchArtifact, AnalysisArtifact, Hallazgo, ValidationReport, EventoBitacora)
+
+
+def _serializador_del_estado():
+    from langgraph.checkpoint.redis.jsonplus_redis import JsonPlusRedisSerializer
+
+    permitidos = {(*m.__module__.split("."), m.__name__): m for m in MODELOS_DEL_ESTADO}
+
+    class SerializadorEstado(JsonPlusRedisSerializer):
+        def _revive_lc2(self, value):
+            revivido = super()._revive_lc2(value)
+            modelo = permitidos.get(tuple(value["id"]))
+            if revivido is None and modelo is not None:
+                # Artefactos de error creados con model_construct() no pasan la validación del
+                # constructor (p. ej. hallazgos=[]): se reconstruyen igual, sin validar, como se guardaron.
+                return modelo.model_construct(**(value.get("kwargs") or {}))
+            return revivido
+
+    return SerializadorEstado(allowed_json_modules=list(permitidos))
+
+
 @asynccontextmanager
 async def checkpointer_redis(redis_url: str) -> AsyncIterator:
     """AsyncRedisSaver listo para usar (crea los índices de RediSearch la primera vez).
@@ -112,5 +148,6 @@ async def checkpointer_redis(redis_url: str) -> AsyncIterator:
     async with AsyncRedisSaver.from_conn_string(
         redis_url, ttl={"default_ttl": TTL_CHECKPOINT_MIN, "refresh_on_read": True}
     ) as saver:
+        saver.serde = _serializador_del_estado()
         await saver.asetup()
         yield saver

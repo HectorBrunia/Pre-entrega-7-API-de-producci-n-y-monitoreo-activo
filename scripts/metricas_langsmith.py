@@ -18,10 +18,13 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import warnings
 from collections import defaultdict
 
 from dotenv import load_dotenv
 from langsmith import Client
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)  # list_runs() sigue vigente hasta 2027
 
 NODOS = ["supervisor", "investigador", "analista", "validador", "aprobacion_humana", "sintesis", "rechazado",
          "escalar_humano"]
@@ -64,7 +67,7 @@ def main() -> None:
         job, fase = meta.get("job_id", "?"), meta.get("fase", "?")
         lat = (r.end_time - r.start_time).total_seconds() if r.end_time else float("nan")
         costo = float(r.total_cost) if r.total_cost is not None else 0.0
-        sin_costo += r.total_cost is None
+        sin_costo += r.total_cost is None and bool(r.total_tokens)  # sin tokens no hay nada que costear
         latencias.append(lat)
         por_job[job]["costo"] += costo
         por_job[job]["tokens"] += r.total_tokens or 0

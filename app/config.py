@@ -15,7 +15,8 @@ COLA = os.getenv("ARQ_QUEUE", "arq:agente")
 MAX_JOBS_CONCURRENTES = int(os.getenv("WORKER_MAX_JOBS", "10"))
 
 # Una ejecución del grafo que supere esto se corta y el job pasa a FAILED
-TIMEOUT_EJECUCION_S = int(os.getenv("JOB_TIMEOUT_SECONDS", "300"))
+# (generoso: con 5 tareas concurrentes cada llamada a Gemini puede tardar decenas de segundos)
+TIMEOUT_EJECUCION_S = int(os.getenv("JOB_TIMEOUT_SECONDS", "900"))
 
 # Retención en Redis: estado de los jobs y checkpoints de LangGraph (el plan free de Redis Cloud
 # tiene 30 MB, así que no se guardan para siempre)
