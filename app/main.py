@@ -39,6 +39,8 @@ async def lifespan(app: FastAPI):
     init_observabilidad("api")
     app.state.redis = Redis.from_url(REDIS_URL, decode_responses=True)
     app.state.arq = await create_pool(RedisSettings.from_dsn(REDIS_URL), default_queue_name=COLA)
+    # Abre las conexiones ahora y no en el primer request (con Redis remoto, cada handshake suma RTTs)
+    await app.state.redis.ping()
     yield
     await app.state.arq.aclose()
     await app.state.redis.aclose()

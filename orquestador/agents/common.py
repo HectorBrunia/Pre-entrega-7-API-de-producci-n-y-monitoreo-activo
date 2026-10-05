@@ -12,6 +12,15 @@ def crear_llm(temperature: float = 0.0):
     from langchain_google_genai import ChatGoogleGenerativeAI
 
     extra = {}
+    if os.getenv("GEMINI_RPM"):
+        # Rate limiter del lado del cliente: con N tareas concurrentes, las llamadas esperan su turno
+        # en vez de chocar contra el límite por minuto de la API (429). El grafo crea UNA instancia del
+        # LLM que comparten todos los agentes, así el límite vale para todo el proceso del worker.
+        from langchain_core.rate_limiters import InMemoryRateLimiter
+
+        extra["rate_limiter"] = InMemoryRateLimiter(
+            requests_per_second=float(os.environ["GEMINI_RPM"]) / 60, check_every_n_seconds=0.1, max_bucket_size=1
+        )
     if os.getenv("GEMINI_THINKING_LEVEL"):  # opcional: "minimal" / "low" bajan la latencia de Gemini 3+
         extra["thinking_level"] = os.environ["GEMINI_THINKING_LEVEL"]
     return ChatGoogleGenerativeAI(

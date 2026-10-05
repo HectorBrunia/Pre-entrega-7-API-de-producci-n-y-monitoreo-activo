@@ -17,8 +17,9 @@ Dónde se intercala en el grafo:
                        sintesis      rechazado ──▶ END
 
 Una tarea es CRÍTICA (criterio determinístico, sin LLM) si:
-  1. Impacto económico: la respuesta va a informar montos de dinero (algún hallazgo validado está en
-     USD/$/ARS/EUR). Es la acción "con efectos secundarios": un monto mal informado se paga.
+  1. Impacto económico: la respuesta va a informar montos de dinero: algún hallazgo validado está en
+     USD/$/ARS/EUR, o la pregunta habla de dinero y hay un cálculo validado (ej: "la hora vale 12 USD,
+     ¿cuánto cobra?"). Es la acción "con efectos secundarios": un monto mal informado se paga.
   2. Costo alto: la ejecución ya consumió muchos pasos del supervisor (≥ HITL_UMBRAL_PASOS), señal de
      que hubo reparaciones y de que la corrida es cara: alguien debería revisarla antes de entregarla.
 
@@ -54,11 +55,20 @@ def evaluar_criticidad(state: AgentState) -> list[str]:
     """Motivos por los que la tarea requiere aprobación humana (lista vacía = no es crítica)."""
     motivos = []
     research = state.get("research_output")
+    montos = []
     if research and aprobado(state, "investigador"):
         montos = [h for h in research.hallazgos if h.unidad and _MONEDA.search(h.unidad)]
-        if montos:
-            detalle = ", ".join(formatear_hallazgo(h) for h in montos)
-            motivos.append(f"Impacto económico: la respuesta informa montos de dinero ({detalle}).")
+    if montos:
+        detalle = ", ".join(formatear_hallazgo(h) for h in montos)
+        motivos.append(f"Impacto económico: la respuesta informa montos de dinero ({detalle}).")
+    elif _MONEDA.search(state["tarea"]) and aprobado(state, "analista"):
+        # El monto puede venir de la PREGUNTA (ej: "la hora vale 12 USD") y no de la política:
+        # el resultado del cálculo igual es dinero a pagar.
+        analisis = state["analysis_output"]
+        motivos.append(
+            f"Impacto económico: la pregunta involucra dinero y el cálculo da {analisis.resultado:g} "
+            f"({analisis.expresion})."
+        )
     pasos = state.get("pasos", 0)
     if pasos >= UMBRAL_PASOS_CRITICO:
         motivos.append(f"Costo alto: la ejecución usó {pasos} pasos del supervisor (umbral {UMBRAL_PASOS_CRITICO}).")

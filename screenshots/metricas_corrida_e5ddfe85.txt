@@ -1,0 +1,24 @@
+Proyecto: api-agente-produccion · 8 trazas raíz
+
+job_id                            fase         status     latencia   tokens   costo USD
+e50f76167de04ee98830ae0524b9ca8c  ejecucion    success     132.86s     6113    0.003057
+515dc80e74464836a7e40f63b40f8a99  ejecucion    success     150.27s     4771    0.002626
+17a7e81142a74ded94751eb389674094  ejecucion    success     169.77s     5035    0.002892
+d8305e789ac84e82b4760ffef4c35828  ejecucion    success     172.82s     5805    0.003442
+d63bc2ae06ca4145ac798bb1c424a0e9  ejecucion    success      77.17s     5174    0.003116
+d63bc2ae06ca4145ac798bb1c424a0e9  reanudacion  success       7.05s      414    0.000250
+e50f76167de04ee98830ae0524b9ca8c  reanudacion  success       5.71s      291    0.000221
+17a7e81142a74ded94751eb389674094  reanudacion  success       3.59s      365    0.000261
+
+=======================================================================================
+Latencia por traza      p50=105.02s   p95=171.75s   p99=172.61s
+Latencia por job        p50=150.27s   p95=173.25s   (ejecución + reanudación, sin la espera del humano)
+Costo por ejecución     promedio=0.003173 USD   máx=0.003442 USD   total corrida=0.015866 USD  (5 jobs)
+
+nodo                 ejecuciones    tokens  % tokens  lat. media  lat. total
+investigador                   5     10112     36.2%      59.32s     296.58s
+supervisor                    15      8766     31.3%      11.86s     177.93s
+analista                       5      7292     26.1%      40.18s     200.90s
+sintesis                       5      1798      6.4%       5.29s      26.45s
+aprobacion_humana              6         0      0.0%       0.00s       0.01s
+validador                     10         0      0.0%       0.00s       0.01s

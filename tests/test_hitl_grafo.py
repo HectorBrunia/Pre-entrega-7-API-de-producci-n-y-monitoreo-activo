@@ -114,3 +114,23 @@ async def test_rechazo_descarta_la_respuesta():
     assert "RECHAZADA" in final["respuesta_final"]
     assert "monto incorrecto" in final["respuesta_final"]
     assert [e.nodo for e in final["bitacora"]][-1] == "rechazado"
+
+
+@pytest.mark.asyncio
+async def test_dinero_en_la_pregunta_tambien_es_critico():
+    """El monto viene de la pregunta (12 USD/hora) y los hallazgos son porcentajes: igual es crítica."""
+    pregunta = "La hora normal vale 12 USD y hizo 10 horas extra en días hábiles. ¿Cuánto cobra por esas horas?"
+    evidencia = "[Fuente: politica_horas_extra.txt] Las horas extra en días hábiles se pagan con un recargo del 50%."
+    hallazgos = [Hallazgo(dato="Recargo horas extra hábiles", valor=50, unidad="%", fuente="politica_horas_extra.txt")]
+    grafo = construir_grafo(
+        investigador=Guionado(respuesta_investigador(hallazgos=hallazgos, evidencia=evidencia)),
+        analista=Guionado(respuesta_analista(expresion="10 * 12 * (1 + 50/100)", resultado=180.0)),
+        router=Guionado(decision("investigador"), decision("analista"), decision("FINISH")),
+        redactor=Guionado(AIMessage(content="Cobra 180 USD.")),
+        checkpointer=InMemorySaver(),
+    )
+    config = _config()
+    await grafo.ainvoke(estado_inicial(pregunta), config)
+
+    pausa = (await grafo.aget_state(config)).interrupts[0].value
+    assert "la pregunta involucra dinero" in pausa["motivos"][0]

@@ -78,6 +78,9 @@ def main() -> None:
     print("\n" + "=" * 87)
     print(f"Latencia por traza      p50={percentil(latencias, 50):.2f}s   p95={percentil(latencias, 95):.2f}s   "
           f"p99={percentil(latencias, 99):.2f}s")
+    lat_jobs = [j["latencia"] for j in por_job.values()]
+    print(f"Latencia por job        p50={percentil(lat_jobs, 50):.2f}s   p95={percentil(lat_jobs, 95):.2f}s   "
+          "(ejecución + reanudación, sin la espera del humano)")
     print(f"Costo por ejecución     promedio={sum(costos_job) / len(costos_job):.6f} USD   "
           f"máx={max(costos_job):.6f} USD   total corrida={sum(costos_job):.6f} USD  ({len(por_job)} jobs)")
     if sin_costo:

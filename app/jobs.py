@@ -102,7 +102,7 @@ async def crear(r: Redis, job_id: str, pregunta: str, etiquetas: list[str], simu
         p.expire(_clave(job_id), TTL_JOB_S)
         p.zadd(INDICE, {job_id: ahora})
         await p.execute()
-    return await obtener(r, job_id)
+    return _deserializar(_serializar(campos))  # sin releer de Redis: un round-trip menos
 
 
 async def obtener(r: Redis, job_id: str) -> dict | None:

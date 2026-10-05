@@ -38,7 +38,7 @@ mi-api-agente/
 ├── scripts/
 │   ├── carga_concurrente.py   # 5 peticiones concurrentes + p50/p95 end-to-end
 │   └── metricas_langsmith.py  # costo por ejecución, p95 y tokens por nodo, leídos de LangSmith
-├── tests/                 # 29 tests offline (sin API keys, con fakeredis)
+├── tests/                 # 33 tests offline (sin API keys, con fakeredis)
 ├── screenshots/           # evidencia del dashboard de LangSmith
 ├── docs/grafo.mmd         # diagrama del grafo
 ├── requirements.txt       # (+ requirements-rag.txt opcional para Pinecone)
@@ -100,7 +100,16 @@ No hace falta crear índices a mano: el worker ejecuta `AsyncRedisSaver.asetup()
 2. En `.env`: `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY=...` y `LANGSMITH_PROJECT=api-agente-produccion`.
 3. **Precio del modelo:** LangSmith calcula el costo con su tabla de precios. Si el modelo de `GEMINI_MODEL` no figura, el costo aparece vacío. Para cargarlo, andá a *Settings → Model Pricing → Add model*, poné el nombre del modelo como *match pattern* y los precios de entrada y salida por 1M de tokens.
 
-### 4. Levantar la API y el worker (dos terminales)
+### 4. Límites de Gemini (plan gratuito)
+
+El plan gratuito tiene topes **por modelo**. `gemini-3.5-flash` permite 20 requests por día, y una ejecución hace unas 8, así que la prueba de 5 no entra. `gemini-3.5-flash-lite` permite 15 requests por minuto. La prueba de carga se corrió con:
+
+```
+GEMINI_MODEL=gemini-3.5-flash-lite
+GEMINI_RPM=14        # rate limiter compartido: con 5 tareas concurrentes, las llamadas esperan su turno en vez de recibir 429
+```
+
+### 5. Levantar la API y el worker (dos terminales)
 
 ```bash
 uvicorn app.main:app --port 8000          # terminal 1: API → http://localhost:8000/docs
@@ -135,7 +144,7 @@ Para demostrar el camino de error, enviá `"simular_fallo": true` en `POST /task
 
 El criterio es determinístico, sin LLM, y se evalúa cuando el supervisor decide finalizar:
 
-1. **Impacto económico:** algún dato validado está en USD/$/ARS/EUR, o sea que la respuesta informa dinero que después se paga (horas extra, presupuestos, reintegros). Es la acción con efectos secundarios.
+1. **Impacto económico:** algún dato validado está en USD/$/ARS/EUR, o la pregunta habla de dinero y hay un cálculo validado (por ejemplo, "la hora vale 12 USD, ¿cuánto cobra?"). La respuesta informa dinero que después se paga (horas extra, presupuestos, reintegros): es la acción con efectos secundarios.
 2. **Costo alto:** la ejecución usó al menos `HITL_UMBRAL_PASOS` pasos (6 por defecto) del supervisor, porque hubo reparaciones y la corrida salió cara.
 
 Mientras espera, el grafo queda **detenido en Redis** sin ocupar el worker. Al aprobar, cualquier proceso del worker lo retoma desde el checkpoint, sin repetir las llamadas a los agentes que ya corrieron.
@@ -170,15 +179,41 @@ Ese script devuelve el **costo por ejecución** (el que LangSmith calcula a part
 
 | Captura | Qué muestra |
 |---|---|
-| `01_trazas_proyecto.png` | Lista de trazas del proyecto filtrada por `carga:<id>`, con latencia, tokens y costo de cada ejecución |
+| `01_trazas_proyecto.png` | Lista de trazas filtrada por `carga:e5ddfe85`, con latencia, tokens y costo de cada ejecución |
 | `02_traza_detalle.png` | Árbol de una traza: `tarea_agente → orquestador_multiagente → supervisor / investigador / analista / ...` |
 | `03_hitl_thread.png` | Vista *Threads*: la ejecución y la reanudación de un job crítico, agrupadas por `thread_id` |
-| `04_costo_por_ejecucion.png` | Dashboard: costo por traza de la corrida concurrente |
-| `05_latencia.png` | Dashboard: latencia de la corrida + salida de `metricas_langsmith.py` con el p95 |
+| `04_costo_por_ejecucion.png` | Dashboard del proyecto (*Cost & Tokens*): costo por traza de la corrida concurrente |
+| `05_latencia.png` | Dashboard del proyecto (*Traces*): latencia de la corrida |
+| `metricas_corrida_e5ddfe85.txt` | Salida de `metricas_langsmith.py`: costo por ejecución, p50/p95/p99 y tokens por nodo |
+| `carga_e5ddfe85.json` | Salida de `carga_concurrente.py`: estados por los que pasó cada job y latencia end-to-end |
 
-### Lectura del dashboard
+### Lectura del dashboard (corrida `e5ddfe85`: 5 peticiones concurrentes, `gemini-3.5-flash-lite`)
 
-*(Se completa con los números reales de la corrida.)*
+| Métrica | Valor |
+|---|---|
+| Resultado | 5/5 `DONE` con la respuesta correcta (231 días · 324 USD · 700 USD · 8 días · 480 USD). 0 llamadas con error |
+| HITL | 3/5 pausadas en `WAITING_APPROVAL` (las tres con dinero) y reanudadas desde el checkpoint en Redis |
+| **Costo por ejecución** (calculado por LangSmith) | **0,0032 USD** promedio · máx. 0,0034 · 0,0159 USD toda la corrida |
+| **Latencia p95** por job (cómputo, sin la espera humana) | **173 s** (p50 150 s) |
+| Latencia p95 por traza | 172 s (p50 105 s: las reanudaciones duran solo de 4 a 7 s) |
+| End-to-end desde el cliente (`carga_concurrente.py`) | p50 157 s · p95 186 s · 187 s de tiempo total (en serie habrían sido ~782 s) |
+| `POST /tasks` (encolar) | ~0,9–2,5 s, con la API respondiendo mientras el worker procesaba los 5 jobs |
+
+**¿Dónde se concentra la latencia?** En las llamadas al LLM. Los nodos sin LLM (validador, aprobación) suman 0 s.
+
+| Nodo | Ejecuciones | Tokens | % tokens | Latencia media |
+|---|---|---|---|---|
+| investigador | 5 | 10.112 | **36 %** | **59 s** |
+| supervisor | 15 | 8.766 | 31 % | 12 s (×3 por job) |
+| analista | 5 | 7.292 | 26 % | 40 s |
+| sintesis | 5 | 1.798 | 6 % | 5 s |
+
+- **El investigador es el nodo que más tokens consume y el más lento.** Es un agente con tool calling: hace al menos 2 llamadas al LLM (buscar y estructurar) y lleva en el contexto los fragmentos que devuelve el RAG.
+- **El supervisor es el segundo en tokens aunque cada llamada es chica,** porque se ejecuta 3 veces por job (rutear al investigador, rutear al analista, finalizar).
+- **Con concurrencia, el cuello de botella es el rate limit de Gemini, no la API.** Las 5 ejecuciones juntas hacen unas 40 llamadas, y con un tope de 15 RPM se encolan en el rate limiter. Por eso cada job tarda más que en solitario, aunque el total es 4 veces menor que en serie. En una primera corrida sin `GEMINI_RPM`, la ráfaga recibió 429 (*RequestsPerMinute*); el fallback del supervisor lo absorbió, pero con trazas con error.
+- **Overhead de Redis Cloud:** el RTT es de unos 300 ms. Persistir los checkpoints suma unos 8 s por ejecución (medido con agentes falsos) y explica que encolar tarde entre 1 y 2 s, ya que son unos 5 round-trips más la apertura de conexiones. Nada de eso bloquea el event loop: `/health` respondió en 0,37 s con los 5 jobs en curso.
+- **El HITL es barato:** la reanudación no vuelve a ejecutar a los agentes. Solo corre `aprobacion_humana → sintesis`, en 4–7 s y con unos 300 tokens.
+- **Costo según el modelo:** con `gemini-3.5-flash` (prueba individual) una ejecución costó 0,035 USD y tardó 261 s. `flash-lite` es unas 11 veces más barato con las mismas respuestas correctas en este dominio.
 
 ## Tests
 
@@ -186,10 +221,11 @@ Ese script devuelve el **costo por ejecución** (el que LangSmith calcula a part
 python -m pytest -q
 ```
 
-Los 29 tests corren offline, sin claves ni Redis real: el grafo usa `InMemorySaver` (misma interfaz que `AsyncRedisSaver`) y el estado de los jobs usa `fakeredis`. Cubren:
+Los 33 tests corren offline, sin claves ni Redis real: el grafo usa `InMemorySaver` (misma interfaz que `AsyncRedisSaver`) y el estado de los jobs usa `fakeredis`. Cubren:
 - pausa, aprobación y rechazo del HITL;
 - `FAILED` ante excepción, timeout y worker caído;
 - que una segunda aprobación concurrente sea rechazada con 409;
+- que los modelos Pydantic del estado se reconstruyan bien al leer un checkpoint de Redis;
 - los tests originales del orquestador del M6.
 
 ## Decisiones de diseño
@@ -197,5 +233,7 @@ Los 29 tests corren offline, sin claves ni Redis real: el grafo usa `InMemorySav
 - **Arq en lugar de `BackgroundTasks`:** el agente corre en otro proceso, así que un pico de tareas no compite con la API por el event loop ni por la CPU. Además, la cola sobrevive a un reinicio de la API y escalar es levantar más workers.
 - **Timeout propio con `asyncio.timeout`:** el timeout de Arq cancela la corrutina con `CancelledError`, que no es `Exception` y se saltearía el `except` que marca `FAILED`.
 - **Compare-and-set en Lua para `/approve`:** si llegan dos aprobaciones simultáneas, solo una saca el job de `WAITING_APPROVAL`. La otra recibe 409 y el grafo no se reanuda dos veces.
+- **Allowlist del serializador de checkpoints:** por seguridad, el `AsyncRedisSaver` solo reconstruye las clases que están en una allowlist. Sin ella, al reanudar tras el HITL los modelos del estado volvían como `dict` y el grafo fallaba. Se registran las clases Pydantic del estado en `app/graph.py`.
+- **Rate limiter del lado del cliente (`GEMINI_RPM`):** es preferible que las llamadas esperen su turno a que fallen con 429 y disparen reparaciones que gastan más tokens.
 - **TTL en Redis:** los checkpoints (24 h) y los jobs (7 días) expiran, para no llenar los 30 MB del plan gratis de Redis Cloud.
 - **Reuso del M6 sin reescribirlo:** los agentes, el validador y el aislamiento de escritura del estado son los mismos. Solo se agregaron el nodo HITL, el campo `aprobacion` del estado y el checkpointer.

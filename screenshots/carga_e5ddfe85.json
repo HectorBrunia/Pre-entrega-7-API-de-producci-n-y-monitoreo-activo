@@ -1,0 +1,89 @@
+{
+  "corrida": "e5ddfe85",
+  "resultados": [
+    {
+      "n": 1,
+      "job_id": "d8305e789ac84e82b4760ffef4c35828",
+      "status": "DONE",
+      "estados": [
+        "PENDING",
+        "RUNNING",
+        "DONE"
+      ],
+      "encolado_ms": 2461.8,
+      "latencia_total_s": 181.75,
+      "paso_por_hitl": false,
+      "error": null,
+      "respuesta": "El empleado acumuló un total de 231 días de vacaciones en los 12 años, según los datos de la *politica_vacaciones.txt*. El cálculo se compone de 5 años con 14 días anuales, 5 años con 21 días anuales y 2 años con 28 días anuales.\n\nCálculo verificado: 5*14 + 5*21 + 2*28 = 231\nFuentes: politica_vacaciones.txt"
+    },
+    {
+      "n": 2,
+      "job_id": "d63bc2ae06ca4145ac798bb1c424a0e9",
+      "status": "DONE",
+      "estados": [
+        "PENDING",
+        "RUNNING",
+        "WAITING_APPROVAL",
+        "PENDING",
+        "RUNNING",
+        "DONE"
+      ],
+      "encolado_ms": 2430.4,
+      "latencia_total_s": 102.52,
+      "paso_por_hitl": true,
+      "error": null,
+      "respuesta": "Según la política_horas_extra.txt, el recargo por horas extra en días hábiles es del 50 % y en feriados es del 100 %. Por lo tanto, el empleado cobra un total de 324 USD por sus horas extra.\n\nCálculo verificado: 10 * 12 * (1 + 50/100) + 6 * 12 * (1 + 100/100) = 324\nFuentes: politica_horas_extra.txt\nAprobado por revisor humano (carga-concurrente): aprobación automática del test"
+    },
+    {
+      "n": 3,
+      "job_id": "17a7e81142a74ded94751eb389674094",
+      "status": "DONE",
+      "estados": [
+        "PENDING",
+        "RUNNING",
+        "WAITING_APPROVAL",
+        "PENDING",
+        "RUNNING",
+        "DONE"
+      ],
+      "encolado_ms": 1933.6,
+      "latencia_total_s": 187.24,
+      "paso_por_hitl": true,
+      "error": null,
+      "respuesta": "Al líder de equipo le sobran 700 USD para hacer su curso de 2300 USD. Este cálculo se obtiene acumulando un máximo de 2 años del presupuesto anual de capacitación, que es de 1500 USD por año, según lo establecido en la `politica_capacitacion.txt`.\n\nCálculo verificado: 1500 * 2 - 2300 = 700\nFuentes: politica_capacitacion.txt\nAprobado por revisor humano (carga-concurrente): aprobación automática del test"
+    },
+    {
+      "n": 4,
+      "job_id": "515dc80e74464836a7e40f63b40f8a99",
+      "status": "DONE",
+      "estados": [
+        "PENDING",
+        "RUNNING",
+        "DONE"
+      ],
+      "encolado_ms": 1932.8,
+      "latencia_total_s": 157.45,
+      "paso_por_hitl": false,
+      "error": null,
+      "respuesta": "En un esquema híbrido estándar, un empleado realiza un total de 8 días presenciales en 4 semanas, según lo establecido en la política_teletrabajo.txt. Este total se obtiene multiplicando los 2 días presenciales por semana indicados en dicha política por las 4 semanas del período.\n\nCálculo verificado: 2 * 4 = 8\nFuentes: politica_teletrabajo.txt"
+    },
+    {
+      "n": 5,
+      "job_id": "e50f76167de04ee98830ae0524b9ca8c",
+      "status": "DONE",
+      "estados": [
+        "PENDING",
+        "RUNNING",
+        "WAITING_APPROVAL",
+        "PENDING",
+        "RUNNING",
+        "DONE"
+      ],
+      "encolado_ms": 938.1,
+      "latencia_total_s": 152.74,
+      "paso_por_hitl": true,
+      "error": null,
+      "respuesta": "Un empleado híbrido de TechCorp recibe un total de 480 USD en un año por el reintegro de conectividad, ya que se le otorga un monto mensual de 40 USD durante 12 meses. Este dato surge de la política_teletrabajo.txt.\n\nCálculo verificado: 40 * 12 = 480\nFuentes: politica_teletrabajo.txt\nAprobado por revisor humano (carga-concurrente): aprobación automática del test"
+    }
+  ]
+}
