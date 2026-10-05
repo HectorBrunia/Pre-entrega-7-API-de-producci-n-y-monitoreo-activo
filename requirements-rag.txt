@@ -1,0 +1,7 @@
+# Opcional: búsqueda híbrida BM25 + Pinecone del M6 (descarga torch, ~1 GB).
+# Sin esto (o sin PINECONE_API_KEY) el investigador usa solo BM25 local.
+-r requirements.txt
+langchain-pinecone
+langchain-huggingface
+sentence-transformers
+pinecone

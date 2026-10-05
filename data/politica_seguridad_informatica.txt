@@ -1,0 +1,5 @@
+Política de Seguridad Informática - TechCorp
+
+Las contraseñas deben renovarse cada 90 días y tener un mínimo de 12 caracteres. El doble factor de autenticación (2FA) es obligatorio en todos los sistemas internos.
+
+Tras 5 intentos fallidos de inicio de sesión la cuenta se bloquea durante 30 minutos.

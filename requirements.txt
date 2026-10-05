@@ -1,0 +1,29 @@
+# --- API y worker ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+arq>=0.26                      # cola de trabajos sobre Redis (worker en proceso separado)
+redis>=5.2,<6                  # rango compatible con arq y langgraph-checkpoint-redis
+httpx>=0.27
+
+# --- Orquestador (M6) + persistencia ---
+langgraph>=1.0
+langgraph-checkpoint-redis>=0.1   # AsyncRedisSaver (requiere Redis 8 / Redis Stack)
+langchain>=1.0
+langchain-core>=1.0
+langchain-google-genai>=4.0
+pydantic>=2.7
+
+# --- RAG de políticas (BM25 local; Pinecone opcional en requirements-rag.txt) ---
+langchain-community
+langchain-classic
+langchain-text-splitters
+rank_bm25
+
+# --- Observabilidad ---
+langsmith>=0.3
+
+# --- Utilidades y tests ---
+python-dotenv
+pytest
+pytest-asyncio
+fakeredis[lua]

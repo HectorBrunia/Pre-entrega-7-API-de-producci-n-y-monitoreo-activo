@@ -1,0 +1,29 @@
+# docker compose up --build   → Redis 8 + API (http://localhost:8000/docs) + worker de Arq
+# Para usar Redis Cloud en lugar del contenedor: REDIS_URL_DOCKER=<tu url> y levantá solo api y worker:
+#   REDIS_URL_DOCKER=redis://... docker compose up --build api worker
+services:
+  redis:
+    image: redis:8            # Redis Open Source 8 trae JSON + Search (lo necesita el AsyncRedisSaver)
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      REDIS_URL: ${REDIS_URL_DOCKER:-redis://redis:6379/0}
+    ports: ["8000:8000"]
+    depends_on:
+      redis: { condition: service_healthy }
+
+  worker:
+    build: .
+    command: ["arq", "app.worker.WorkerSettings"]
+    env_file: .env
+    environment:
+      REDIS_URL: ${REDIS_URL_DOCKER:-redis://redis:6379/0}
+    depends_on:
+      redis: { condition: service_healthy }
