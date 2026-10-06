@@ -182,8 +182,8 @@ Ese script devuelve el **costo por ejecución** (el que LangSmith calcula a part
 | `01_trazas_proyecto.png` | Lista de trazas filtrada por `carga:e5ddfe85`, con latencia, tokens y costo de cada ejecución |
 | `02_traza_detalle.png` | Árbol de una traza: `tarea_agente → orquestador_multiagente → supervisor / investigador / analista / ...` |
 | `03_hitl_thread.png` | Vista *Threads*: la ejecución y la reanudación de un job crítico, agrupadas por `thread_id` |
-| `04_costo_por_ejecucion.png` | Dashboard del proyecto (*Cost & Tokens*): costo por traza de la corrida concurrente |
-| `05_latencia.png` | Dashboard del proyecto (*Traces*): latencia de la corrida |
+| `04_costo_por_ejecucion.png` | Dashboard *Cost per Trace*: ~0,035 USD/traza con `gemini-3.5-flash` (prueba individual de las 17:45) frente a ~0,003 USD/traza con `flash-lite` en la corrida de carga |
+| `05_latencia.png` | *Stats* de las 8 trazas de la corrida (filtro por tag `carga:e5ddfe85`): 0 % de error, 27.968 tokens / 0,02 USD, latencia P50 77 s y P99 169 s |
 | `metricas_corrida_e5ddfe85.txt` | Salida de `metricas_langsmith.py`: costo por ejecución, p50/p95/p99 y tokens por nodo |
 | `carga_e5ddfe85.json` | Salida de `carga_concurrente.py`: estados por los que pasó cada job y latencia end-to-end |
 
@@ -196,6 +196,7 @@ Ese script devuelve el **costo por ejecución** (el que LangSmith calcula a part
 | **Costo por ejecución** (calculado por LangSmith) | **0,0032 USD** promedio · máx. 0,0034 · 0,0159 USD toda la corrida |
 | **Latencia p95** por job (cómputo, sin la espera humana) | **173 s** (p50 150 s) |
 | Latencia p95 por traza | 172 s (p50 105 s: las reanudaciones duran solo de 4 a 7 s) |
+| Latencia según la UI de LangSmith (Stats) | P50 77 s · P99 169 s. Con 8 trazas, la mediana cae entre 77 s y 133 s: la UI toma el valor de abajo y el script interpola (105 s). El P99 coincide: 169–172 s |
 | End-to-end desde el cliente (`carga_concurrente.py`) | p50 157 s · p95 186 s · 187 s de tiempo total (en serie habrían sido ~782 s) |
 | `POST /tasks` (encolar) | ~0,9–2,5 s, con la API respondiendo mientras el worker procesaba los 5 jobs |
 
